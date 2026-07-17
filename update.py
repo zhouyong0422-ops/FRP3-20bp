@@ -288,7 +288,7 @@ def scan_entropy(sequences: list) -> list:
 
 def run_pipeline_engine(sequences: list, progress_bar, status_text):
     seq_len = len(sequences[0])
-    total_steps = max(1, seq_len - 160)
+    total_steps = max(1, seq_len - 157)
     
     memo_fwd_primers, memo_fwd_probes, memo_rev_probes, memo_rev_primers = {}, {}, {}, {}
 
@@ -354,7 +354,7 @@ def run_pipeline_engine(sequences: list, progress_bar, status_text):
         for f_obj in f_obj_list[:2]:
             f_vars, f_len = f_obj["variants"], f_obj["length"]
             min_r_start = max(i + f_len + 1, i + 70 - 25)
-            max_r_start = min(seq_len - 1, i + 160 - 18)
+            max_r_start = min(seq_len - 1, i + 157 - 18)
             
             for r_start in range(min_r_start, max_r_start + 1):
                 r_obj_list = get_all_valid_variants_rev(r_start, False)
@@ -363,7 +363,7 @@ def run_pipeline_engine(sequences: list, progress_bar, status_text):
                 for r_obj in r_obj_list[:2]:
                     r_vars, r_len = r_obj["variants"], r_obj["length"]
                     amplicon_size = r_start + r_len - i
-                    if amplicon_size < 70 or amplicon_size > 160: continue
+                    if amplicon_size < 70 or amplicon_size > 157: continue
                     
                     primer_max_tm = max(max(calc_tm(v) for v in f_vars), max(calc_tm(v) for v in r_vars))
                     primer_min_tm = min(min(calc_tm(v) for v in f_vars), min(calc_tm(v) for v in r_vars))
@@ -502,7 +502,7 @@ if run_btn:
             st.markdown("<p style='text-align:center; font-size:13px; color:#95a5a6;'>核心设计框架：严格限定<b>探针长度 18-30bp</b>，探针 $T_m >$ 引物 $T_m$；全局严禁在 3' 末端 5bp 引入任何兼并碱基，结合多维加速评分，精准遴选靶区体系。</p>", unsafe_allow_html=True)
             
             if not loci_groups:
-                st.markdown('<div class="card-box" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b; margin-top:0;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到产物 70-160bp、且满足探针 18-30bp 长度与 Tm 大于引物规范的有效靶区。</p></div>', unsafe_allow_html=True)
+                st.markdown('<div class="card-box" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b; margin-top:0;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到产物 70-157bp、且满足探针 18-30bp 长度与 Tm 大于引物规范的有效靶区。</p></div>', unsafe_allow_html=True)
             else:
                 # 准备生成 CSV 导出的数据体
                 csv_rows = []
