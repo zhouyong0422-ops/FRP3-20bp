@@ -647,8 +647,8 @@ if st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 
             reportHTML += "</div>"
             
             # 清除每一行开头的缩进空格，防止被 Markdown 识别为代码块
-clean_html = '\n'.join([line.strip() for line in reportHTML.split('\n')])
-st.markdown(clean_html, unsafe_allow_html=True)
+            clean_html = '\n'.join([line.strip() for line in reportHTML.split('\n')])
+            st.markdown(clean_html, unsafe_allow_html=True)
             
             # CSV 导出生成
             if globalLociGroups:
