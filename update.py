@@ -563,7 +563,7 @@ if st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 
             progress_bar.progress(100)
             status_text.markdown("**✅ 寻优完成！最终 DOE 清单已就绪。**")
             
-            # HTML 报告渲染
+            # HTML 报告渲染（已修复反引号导致的 Python 语法错误）
             reportHTML = f"""
             <div class="report-box" style="display:block;">
                 <div class="report-header">
@@ -574,7 +574,7 @@ if st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 
             """
             
             if not globalLociGroups:
-                reportHTML += `<div class="candidate-card" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到满足各项约束指标的有效靶区。</p></div>`
+                reportHTML += '<div class="candidate-card" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到满足各项约束指标的有效靶区。</p></div>'
             else:
                 def generateSeqRows(title, variantsArray):
                     html = ''
@@ -610,7 +610,7 @@ if st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 
                     for vIndex, cand in enumerate(locus['variants']):
                         isPrimary = (vIndex == 0)
                         cardClass = 'cand-primary' if isPrimary else 'cand-variant'
-                        roleBadge = `<span class="role-badge role-main">主力优选</span>` if isPrimary else f'<span class="role-badge role-sub">微调备选 {vIndex}</span>'
+                        roleBadge = '<span class="role-badge role-main">主力优选</span>' if isPrimary else f'<span class="role-badge role-sub">微调备选 {vIndex}</span>'
                         
                         reportHTML += f"""
                         <div class="candidate-card {cardClass}">
