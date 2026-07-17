@@ -569,7 +569,8 @@ if run_btn:
                             f'</div>'
                             f'{render_rows("Forward", cand["fwd"])}'
                             f'{render_stats(cand["fStats"], len(cand["fwd"]) > 1)}'
-                            f'{render_rows(f"Probe [{cand[\'probeDir\']}]", cand["probe"], True)}'
+                            # 修正后的代码第 572 行
+                            f'{render_rows(f"Probe [{cand["probeDir"]}]", cand["probe"], True)}'
                             f'{render_stats(cand["pStats"], len(cand["probe"]) > 1)}'
                             f'{render_rows("Reverse", cand["rev"])}'
                             f'{render_stats(cand["rStats"], len(cand["rev"]) > 1)}'
