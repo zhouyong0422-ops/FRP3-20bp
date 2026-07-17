@@ -574,7 +574,7 @@ if st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 
             """
             
             if not globalLociGroups:
-                reportHTML += `<div class="candidate-card" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b;">体系设计失败</h4><p>在该序列库中未能找到满足各项约束指标的有效靶区。</p></div>`
+                reportHTML += `<div class="candidate-card" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到满足各项约束指标的有效靶区。</p></div>`
             else:
                 def generateSeqRows(title, variantsArray):
                     html = ''
