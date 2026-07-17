@@ -4,6 +4,7 @@ import numpy as np
 import math
 import io
 import time
+import re
 from datetime import datetime
 from collections import Counter
 
@@ -17,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 嵌入深度还原的 UI 排版 CSS
+# 嵌入深度还原并强化的 UI 排版 CSS
 st.markdown("""
 <style>
     /* 全局背景与字体 */
@@ -32,40 +33,56 @@ st.markdown("""
     .header-title { color: #2c3e50; font-size: 28px; font-weight: bold; margin: 0; }
     .badge { background: #8e44ad; color: white; padding: 5px 14px; border-radius: 15px; font-size: 14px; font-weight: bold; }
     
-    /* 上传区块样式提示 */
-    .upload-hint { font-style: italic; color: #7f8c8d; font-size: 14px; margin-top: -10px; margin-bottom: 15px; }
+    /* 上传提示文字 */
+    .upload-hint { font-style: italic; color: #7f8c8d; font-size: 14px; margin-top: 4px; margin-bottom: 10px; line-height: 1.6; }
+    
+    /* 文本输入框美化 */
+    .stTextArea textarea {
+        border: 2px solid #bdc3c7 !important; border-radius: 8px !important;
+        font-family: monospace !important; background-color: #ffffff !important;
+        padding: 12px !important; font-size: 13px !important; line-height: 1.5 !important;
+    }
+    .stTextArea textarea:focus { border-color: #1abc9c !important; box-shadow: 0 0 8px rgba(26, 188, 156, 0.3) !important; }
     
     /* 靶区与卡片布局 */
     .locus-title-bar {
-        background: #edf2f7; color: #2c3e50; padding: 12px 20px; font-size: 18px; font-weight: bold;
-        border: 1px solid #d1d5db; border-radius: 8px 8px 0 0; margin-top: 30px;
+        background: #edf2f7; color: #2c3e50; padding: 14px 20px; font-size: 18px; font-weight: bold;
+        border: 1px solid #d1d5db; border-radius: 8px 8px 0 0; margin-top: 35px;
         display: flex; justify-content: space-between; align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .card-box {
         background: #fff; padding: 20px; border-left: 6px solid #bdc3c7;
-        border-right: 1px solid #d1d5db; border-bottom: 1px solid #d1d5db; margin-bottom: 10px;
+        border-right: 1px solid #d1d5db; border-bottom: 1px solid #d1d5db; margin-bottom: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
     .card-primary { border-left-color: #27ae60; background: #f9fbfd; }
+    .card-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #e1e8ed; padding-bottom:10px; margin-bottom:15px; }
     
     /* 角色与分数徽章 */
-    .role-badge-main { background: #27ae60; color: white; font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
-    .role-badge-sub { background: #7f8c8d; color: white; font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
-    .score-badge { background: #f39c12; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+    .role-badge-main { background: #27ae60; color: white; font-size: 12px; padding: 3px 10px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
+    .role-badge-sub { background: #7f8c8d; color: white; font-size: 12px; padding: 3px 10px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
+    .score-badge { background: #f39c12; color: white; padding: 3px 12px; border-radius: 12px; font-size: 14px; font-weight: bold; }
     
     /* 序列区块排版 */
-    .seq-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 14px; margin-bottom: 4px; padding: 4px 8px; background: #fff; border-radius: 4px; border: 1px solid #ecf0f1; }
+    .seq-row { display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 14px; margin-bottom: 6px; padding: 8px 12px; background: #fff; border-radius: 6px; border: 1px solid #ecf0f1; }
     .seq-probe-row { border-left: 4px solid #8e44ad; background: #fdfafb; }
-    .seq-type { font-weight: bold; width: 130px; color: #34495e; }
+    .seq-type { font-weight: bold; width: 140px; color: #34495e; }
     .seq-string { color: #d35400; letter-spacing: 1px; font-weight: bold; flex-grow: 1; }
     .seq-stats { color: #7f8c8d; font-size: 12px; text-align: right; }
     
-    /* 状态与统计小标签 */
-    .stat-badge { padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 11px; margin-right: 5px; display: inline-block; margin-top: 4px; }
+    /* 错配统计行排版 */
+    .stats-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; margin-bottom: 14px; padding-left: 4px; }
+    .stat-badge { padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 11px; display: inline-block; }
     .bg-0 { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .bg-1 { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     .bg-2 { background: #ffeeba; color: #856404; border: 1px solid #ffdf7e; }
     .bg-3 { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .mix-badge { background: #9b59b6; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px; display: inline-block; margin-top: 4px; }
+    .mix-badge { background: #9b59b6; color: white; padding: 3px 8px; border-radius: 8px; font-size: 11px; display: inline-block; font-weight: bold; }
+    
+    /* 展开细节文字排版 */
+    .details-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f2f6; }
+    .details-row:last-child { border-bottom: none; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 4px; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -428,11 +445,12 @@ def run_pipeline_engine(sequences: list, progress_bar, status_text):
     return loci_groups
 
 # ==========================================
-# 4. 页面主体与用户交互区域
+# 4. 页面主体与用户交互区域 (带有边框卡片包装)
 # ==========================================
 
-with st.container():
-    col1, col2 = st.columns([1, 3])
+# 用 border=True 将输入框和文件选择器严密包裹在一个带边框和阴影的专业卡片中
+with st.container(border=True):
+    col1, col2 = st.columns([1, 2.5])
     with col1:
         uploaded_file = st.file_uploader("📂 导入 FASTA 序列库", type=["fasta", "fas", "txt", "aln"], label_visibility="collapsed")
         st.markdown('<div class="upload-hint">导入多序列比对 FASTA 变异库(fasta,fas,txt,aln)，自动筛选符合 TaqMan qPCR 规范的引物探针组合，输出可视化报告并支持 CSV 导出。</div>', unsafe_allow_html=True)
@@ -440,7 +458,7 @@ with st.container():
         fasta_text = ""
         if uploaded_file is not None:
             fasta_text = uploaded_file.getvalue().decode("utf-8")
-        fasta_input = st.text_area("或在此处直接粘贴比对完成的 FASTA 序列...", value=fasta_text, height=100, label_visibility="collapsed")
+        fasta_input = st.text_area("或在此处直接粘贴比对完成的 FASTA 序列...", value=fasta_text, height=130, label_visibility="collapsed", placeholder="或在此处直接粘贴比对完成的 FASTA 序列...")
 
 run_btn = st.button("⚙️ 启动靶区筛选：高精度加权运算输出引探 DOE 试验方案", use_container_width=True, type="primary")
 
@@ -484,12 +502,7 @@ if run_btn:
             st.markdown("<p style='text-align:center; font-size:13px; color:#95a5a6;'>核心设计框架：严格限定<b>探针长度 18-30bp</b>，探针 $T_m >$ 引物 $T_m$；全局严禁在 3' 末端 5bp 引入任何兼并碱基，结合多维加速评分，精准遴选靶区体系。</p>", unsafe_allow_html=True)
             
             if not loci_groups:
-                st.markdown("""
-                <div class="card-box" style="border-left-color: #e74c3c;">
-                    <h4 style="color:#c0392b; margin-top:0;">⚠️ 体系设计失败</h4>
-                    <p>在该序列库中未能找到产物 70-160bp、且满足探针 18-30bp 长度与 Tm 大于引物规范的有效靶区。</p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown('<div class="card-box" style="border-left-color: #e74c3c;"><h4 style="color:#c0392b; margin-top:0;">⚠️ 体系设计失败</h4><p>在该序列库中未能找到产物 70-160bp、且满足探针 18-30bp 长度与 Tm 大于引物规范的有效靶区。</p></div>', unsafe_allow_html=True)
             else:
                 # 准备生成 CSV 导出的数据体
                 csv_rows = []
@@ -526,72 +539,45 @@ if run_btn:
                         use_container_width=True
                     )
                 
-                # 遍历并深度渲染 HTML 卡片
+                # 遍历并深度渲染 HTML 卡片（完全移除了行首缩进，杜绝代码块解析 Bug）
                 for loc in loci_groups:
-                    st.markdown(f"""
-                    <div class="locus-title-bar">
-                        <span>🎯 独立黄金靶区 {loc['locusId']}</span>
-                        <span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">(参考起始坐标: {loc['anchorStart']})</span>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f'<div class="locus-title-bar"><span>🎯 独立黄金靶区 {loc["locusId"]}</span><span style="font-size: 14px; color: #7f8c8d; font-weight: normal;">(参考起始坐标: {loc["anchorStart"]})</span></div>', unsafe_allow_html=True)
                     
                     for v_idx, cand in enumerate(loc["variants"]):
                         is_primary = (v_idx == 0)
                         card_class = "card-primary" if is_primary else ""
                         role_badge = '<span class="role-badge-main">主力优选</span>' if is_primary else f'<span class="role-badge-sub">微调备选 {v_idx}</span>'
                         
-                        # 构建序列展示行的内部渲染
                         def render_rows(title, var_list, is_probe=False):
                             html_str = ""
                             for idx, seq in enumerate(var_list):
                                 lbl = f"{title} {idx+1}" if len(var_list) > 1 else title
                                 row_style = "seq-probe-row" if is_probe else ""
-                                html_str += f"""
-                                <div class="seq-row {row_style}">
-                                    <span class="seq-type">{lbl}:</span>
-                                    <span class="seq-string">5'- {seq} -3'</span>
-                                    <span class="seq-stats">Len: {len(seq)}bp | Tm: {calc_tm(seq)}°C | GC: {calc_gc(seq)}%</span>
-                                </div>
-                                """
+                                html_str += f'<div class="seq-row {row_style}"><span class="seq-type">{lbl}:</span><span class="seq-string">5\'- {seq} -3\'</span><span class="seq-stats">Len: {len(seq)}bp | Tm: {calc_tm(seq)}°C | GC: {calc_gc(seq)}%</span></div>'
                             return html_str
 
                         def render_stats(stats, is_mix):
                             mix_str = '<span class="mix-badge">混合套数扣分(-35)</span>' if is_mix else ''
-                            return f"""
-                            <div style="margin-top:4px; margin-bottom:12px;">
-                                <span class="stat-badge bg-0">完全匹配(0): {stats['p0']}%, {stats['m0']}/{stats['total']}</span>
-                                <span class="stat-badge bg-1">错配1碱基(1): {stats['p1']}%, {stats['m1']}/{stats['total']}</span>
-                                <span class="stat-badge bg-2">错配2碱基(2): {stats['p2']}%, {stats['m2']}/{stats['total']}</span>
-                                <span class="stat-badge bg-3">错配3碱基(≥3): {stats['p3']}%, {stats['m3p']}/{stats['total']}</span>
-                                {mix_str}
-                            </div>
-                            """
+                            return f'<div class="stats-row"><span class="stat-badge bg-0">完全匹配(0): {stats["p0"]}%, {stats["m0"]}/{stats["total"]}</span><span class="stat-badge bg-1">错配1碱基(1): {stats["p1"]}%, {stats["m1"]}/{stats["total"]}</span><span class="stat-badge bg-2">错配2碱基(2): {stats["p2"]}%, {stats["m2"]}/{stats["total"]}</span><span class="stat-badge bg-3">错配3碱基(≥3): {stats["p3"]}%, {stats["m3p"]}/{stats["total"]}</span>{mix_str}</div>'
 
-                        # 渲染主卡片骨架
-                        st.markdown(f"""
-                        <div class="card-box {card_class}">
-                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #e1e8ed; padding-bottom:8px; margin-bottom:12px;">
-                                <div>{role_badge} <span style="font-size:16px; font-weight:bold; color:#2c3e50;">综合得分: </span><span class="score-badge">{cand['score']:.1f} 分</span></div>
-                                <div style="font-size: 13px; color: #95a5a6;">精确定位: {cand['start']} | 产物长度: {cand['size']} bp | 探针间距: {cand['probeGap']} bp</div>
-                            </div>
-                            {render_rows('Forward', cand['fwd'])}
-                            {render_stats(cand['fStats'], len(cand['fwd']) > 1)}
-                            {render_rows(f"Probe [{cand['probeDir']}]", cand['probe'], True)}
-                            {render_stats(cand['pStats'], len(cand['probe']) > 1)}
-                            {render_rows('Reverse', cand['rev'])}
-                            {render_stats(cand['rStats'], len(cand['rev']) > 1)}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # 核心卡片渲染：保证无缩进、整段解析
+                        card_html = (
+                            f'<div class="card-box {card_class}">'
+                            f'<div class="card-header">'
+                            f'<div>{role_badge} <span style="font-size:16px; font-weight:bold; color:#2c3e50;">综合得分: </span><span class="score-badge">{cand["score"]:.1f} 分</span></div>'
+                            f'<div style="font-size: 13px; color: #95a5a6;">精确定位: {cand["start"]} | 产物长度: {cand["size"]} bp | 探针间距: {cand["probeGap"]} bp</div>'
+                            f'</div>'
+                            f'{render_rows("Forward", cand["fwd"])}'
+                            f'{render_stats(cand["fStats"], len(cand["fwd"]) > 1)}'
+                            f'{render_rows(f"Probe [{cand[\'probeDir\']}]", cand["probe"], True)}'
+                            f'{render_stats(cand["pStats"], len(cand["probe"]) > 1)}'
+                            f'{render_rows("Reverse", cand["rev"])}'
+                            f'{render_stats(cand["rStats"], len(cand["rev"]) > 1)}'
+                            f'</div>'
+                        )
+                        st.markdown(card_html, unsafe_allow_html=True)
                         
                         # 原生折叠面板对应详情项
                         with st.expander("🔍 展开查看当前候选体系全维度评估分"):
                             det = cand["details"]
-                            st.markdown(f"""
-                            <div style="font-size:13px; color:#555; line-height:2.0;">
-                                <div style="display:flex; justify-content:space-between;"><span>基础匹配分 (探针 3 倍权重)</span><span style="color:#27ae60; font-weight:bold;">+{det['base']:.1f}</span></div>
-                                <div style="display:flex; justify-content:space-between;"><span>探针匹配度奖励 (完美率 ≥99%)</span><span style="color:#27ae60; font-weight:bold;">+{det['pBonus']:.1f}</span></div>
-                                <div style="display:flex; justify-content:space-between;"><span>探针错配惩罚 (低于98%十倍扣除)</span><span style="color:{'#c0392b' if det['pPenalty']!=0 else '#333'}; font-weight:bold;">{det['pPenalty']:.1f}</span></div>
-                                <div style="display:flex; justify-content:space-between;"><span>F/R 混合套数扣分 (-35分/次，极力优选单套)</span><span style="color:{'#c0392b' if (det['mixF']+det['mixR'])!=0 else '#333'}; font-weight:bold;">{det['mixF'] + det['mixR']}</span></div>
-                                <div style="display:flex; justify-content:space-between; border-top:1px solid #ddd; padding-top:4px; font-weight:bold;"><span>偏离规则体系总扣分 (GC/温差/同向间距过长等)</span><span style="color:{'#c0392b' if det['softPen']!=0 else '#333'}; font-weight:bold;">{det['softPen']:.1f}</span></div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown(f'<div style="font-size:13px; color:#555; line-height:2.0;"><div class="details-row"><span>基础匹配分 (探针 3 倍权重)</span><span style="color:#27ae60; font-weight:bold;">+{det["base"]:.1f}</span></div><div class="details-row"><span>探针匹配度奖励 (完美率 ≥99%)</span><span style="color:#27ae60; font-weight:bold;">+{det["pBonus"]:.1f}</span></div><div class="details-row"><span>探针错配惩罚 (低于98%十倍扣除)</span><span style="color:{"#c0392b" if det["pPenalty"]!=0 else "#333"}; font-weight:bold;">{det["pPenalty"]:.1f}</span></div><div class="details-row"><span>F/R 混合套数扣分 (-35分/次，极力优选单套)</span><span style="color:{"#c0392b" if (det["mixF"]+det["mixR"])!=0 else "#333"}; font-weight:bold;">{det["mixF"] + det["mixR"]}</span></div><div class="details-row"><span>偏离规则体系总扣分 (GC/温差/同向间距过长等)</span><span style="color:{"#c0392b" if det["softPen"]!=0 else "#333"}; font-weight:bold;">{det["softPen"]:.1f}</span></div></div>', unsafe_allow_html=True)
